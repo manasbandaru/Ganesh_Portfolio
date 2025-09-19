@@ -1,3 +1,4 @@
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useMemo } from 'react';
 import * as Icons from 'react-icons/si';
@@ -7,6 +8,24 @@ import type { SkillCategory } from '../../types';
 const Skills = () => {
   const [activeCategory, setActiveCategory] = useState<SkillCategory | 'all'>('all');
   const [hoveredSkill, setHoveredSkill] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // All hooks must be called before any conditional returns
+  const filteredSkills = useMemo(() => {
+    if (activeCategory === 'all') {
+      return skills;
+    }
+    return skills.filter(skill => skill.category === activeCategory);
+  }, [activeCategory]);
+
+  const certifiedSkills = useMemo(() => getSkillsWithCertifications(), []);
+
+  // Ensure skills are loaded
+  React.useEffect(() => {
+    if (skills && skills.length > 0) {
+      setIsLoading(false);
+    }
+  }, []);
 
   const categories: { key: SkillCategory | 'all'; label: string; icon: string }[] = [
     { key: 'all', label: 'All Skills', icon: 'SiCodersrank' },
@@ -17,14 +36,18 @@ const Skills = () => {
     { key: 'tools', label: 'Tools', icon: 'SiDocker' }
   ];
 
-  const filteredSkills = useMemo(() => {
-    if (activeCategory === 'all') {
-      return skills;
-    }
-    return skills.filter(skill => skill.category === activeCategory);
-  }, [activeCategory]);
-
-  const certifiedSkills = useMemo(() => getSkillsWithCertifications(), []);
+  if (isLoading) {
+    return (
+      <section id="skills" className="section-padding bg-slate-900 smooth-scroll-section">
+        <div className="container-custom">
+          <div className="text-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-slate-400">Loading skills...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -58,15 +81,24 @@ const Skills = () => {
   };
 
   const renderIcon = (iconName: string) => {
-    const IconComponent = (Icons as any)[iconName];
-    return IconComponent ? (
-      <IconComponent className="w-6 h-6 sm:w-8 sm:h-8" />
-    ) : (
-      // Fallback icon for missing icons
-      <div className="w-6 h-6 sm:w-8 sm:h-8 bg-slate-600 rounded flex items-center justify-center text-xs font-bold text-white">
-        {iconName.replace('Si', '').slice(0, 2).toUpperCase()}
-      </div>
-    );
+    try {
+      const IconComponent = (Icons as any)[iconName];
+      return IconComponent ? (
+        <IconComponent className="w-6 h-6 sm:w-8 sm:h-8" />
+      ) : (
+        // Fallback icon for missing icons
+        <div className="w-6 h-6 sm:w-8 sm:h-8 bg-slate-600 rounded flex items-center justify-center text-xs font-bold text-white">
+          {iconName.replace('Si', '').slice(0, 2).toUpperCase()}
+        </div>
+      );
+    } catch (error) {
+      // Fallback for any icon loading errors
+      return (
+        <div className="w-6 h-6 sm:w-8 sm:h-8 bg-slate-600 rounded flex items-center justify-center text-xs font-bold text-white">
+          {iconName.replace('Si', '').slice(0, 2).toUpperCase()}
+        </div>
+      );
+    }
   };
 
   return (
@@ -76,7 +108,7 @@ const Skills = () => {
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, amount: 0.1 }}
+          viewport={{ once: true, amount: 0.05 }}
           transition={{ staggerChildren: 0.1, duration: 0.6 }}
         >
           {/* Section Header */}
@@ -119,25 +151,16 @@ const Skills = () => {
           {/* Skills Grid */}
           <div className="mb-16">
             {!filteredSkills || filteredSkills.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center py-12"
-              >
+              <div className="text-center py-12">
                 <p className="text-slate-400 text-base sm:text-lg">
                   {skills.length === 0 ? 'Loading skills...' : `No skills found for ${activeCategory === 'all' ? 'this' : activeCategory} category.`}
                 </p>
                 <p className="text-slate-500 text-sm mt-2">
                   Total skills available: {skills.length}
                 </p>
-              </motion.div>
+              </div>
             ) : (
-              <motion.div 
-                className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-              >
+              <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 <AnimatePresence>
                   {filteredSkills.map((skill, index) => (
                 <motion.div
@@ -150,8 +173,7 @@ const Skills = () => {
                     scale: 1.02,
                     y: -3
                   }}
-                  onTouchStart={() => setHoveredSkill(skill.name)}
-                  onTouchEnd={() => setHoveredSkill(null)}
+                  onClick={() => setHoveredSkill(hoveredSkill === skill.name ? null : skill.name)}
                   onHoverStart={() => setHoveredSkill(skill.name)}
                   onHoverEnd={() => setHoveredSkill(null)}
                   className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-slate-700/50 hover:border-blue-500/50 transition-all duration-300 relative overflow-hidden group touch-manipulation min-h-[140px] sm:min-h-[160px]"
@@ -256,7 +278,7 @@ const Skills = () => {
               </motion.div>
                   ))}
                 </AnimatePresence>
-              </motion.div>
+              </div>
             )}
           </div>
 
